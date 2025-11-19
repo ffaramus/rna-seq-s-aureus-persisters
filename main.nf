@@ -73,6 +73,8 @@ process DOWNLOAD_REFERENCE {
 
     script:
     """
+    wget -q -O reference.fasta \
+    "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=CP000253.1&rettype=fasta"
     wget -q -O reference.gff3 \
         "https://www.ncbi.nlm.nih.gov/sviewer/viewer.cgi?db=nuccore&report=gff3&id=CP000253.1"
     echo "wget: `wget --version | head -1`" > versions.yml
