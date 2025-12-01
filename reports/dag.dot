@@ -73,11 +73,55 @@ v16 [label="DESEQ2"];
 v15 -> v16 [label="samples_metadata"];
 
 v16 [label="DESEQ2"];
-v18 [shape=point];
-v16 -> v18;
+v18 [label="ANNOTATE_GENES"];
+v16 -> v18 [label="deseq_results"];
 
 v16 [label="DESEQ2"];
 v17 [shape=point];
 v16 -> v17;
+
+v6 [label="DOWNLOAD_REFERENCE"];
+v18 [label="ANNOTATE_GENES"];
+v6 -> v18 [label="gff_ch"];
+
+v18 [label="ANNOTATE_GENES"];
+v20 [label="PATHWAYS"];
+v18 -> v20 [label="annotated_ch"];
+
+v18 [label="ANNOTATE_GENES"];
+v19 [shape=point];
+v18 -> v19;
+
+v20 [label="PATHWAYS"];
+v25 [shape=point];
+v20 -> v25;
+
+v20 [label="PATHWAYS"];
+v24 [shape=point];
+v20 -> v24;
+
+v20 [label="PATHWAYS"];
+v23 [shape=point];
+v20 -> v23;
+
+v20 [label="PATHWAYS"];
+v22 [shape=point];
+v20 -> v22;
+
+v20 [label="PATHWAYS"];
+v21 [shape=point];
+v20 -> v21;
+
+v16 [label="DESEQ2"];
+v26 [label="PLOT_DESEQ2"];
+v16 -> v26 [label="deseq_results"];
+
+v26 [label="PLOT_DESEQ2"];
+v28 [shape=point];
+v26 -> v28;
+
+v26 [label="PLOT_DESEQ2"];
+v27 [shape=point];
+v26 -> v27;
 
 }

@@ -4,7 +4,6 @@ if (!requireNamespace("dplyr", quietly = TRUE)) {
 }
 
 suppressPackageStartupMessages({
-    library(dplyr)
     library(stringr)
 })
 
@@ -19,52 +18,62 @@ gff_file   <- args[2]
 outfile    <- args[3]
 
 cat("Lecture du fichier DESeq2 :", deseq_file, "\n")
-deg <- read.csv(deseq_file)
+deg <- read.csv(deseq_file, stringsAsFactors = FALSE)
 
-# Vérifications minimales
 if (!"gene_id" %in% colnames(deg)) {
     stop("Le fichier DESeq2 doit contenir une colonne 'gene_id'.")
 }
 
 # ----------------------------------------------
-# Lecture et parsing du GFF
+# Lecture et filtrage du GFF
 # ----------------------------------------------
 
 cat("Lecture du GFF :", gff_file, "\n")
 
-gff <- read.delim(gff_file, comment.char="#", header=FALSE, sep="\t", stringsAsFactors=FALSE)
+gff <- read.delim(gff_file, comment.char="#", header=FALSE, sep="\t",
+                  stringsAsFactors=FALSE)
 
-# Le GFF3 contient 9 colonnes
 if (ncol(gff) < 9) stop("Format GFF inattendu.")
 
-colnames(gff)[1:9] <- c("seqid","source","type","start","end","score","strand","phase","attributes")
+colnames(gff)[1:9] <- c(
+    "seqid","source","type","start","end",
+    "score","strand","phase","attributes"
+)
 
-# On garde uniquement les gènes ou CDS
-gff_genes <- gff %>% filter(type %in% c("gene","CDS"))
+# Equivalent de filter(type %in% ...)
+gff_genes <- gff[gff$type %in% c("gene", "CDS"), ]
 
-# Extraction attributs sous forme clé=valeur
+# ----------------------------------------------
+# Extraction des attributs
+# ----------------------------------------------
+
 extract_attr <- function(attr, key) {
     match <- str_match(attr, paste0(key, "=([^;]+)"))
-    return(ifelse(is.na(match[,2]), NA, match[,2]))
+    ifelse(is.na(match[,2]), NA, match[,2])
 }
 
-gff_annot <- gff_genes %>% 
-    mutate(
-        locus_tag = extract_attr(attributes, "locus_tag"),
-        gene_name = extract_attr(attributes, "gene"),
-        product   = extract_attr(attributes, "product")
-    ) %>%
-    select(locus_tag, gene_name, product) %>%
-    distinct()
+gff_annot <- data.frame(
+    locus_tag = extract_attr(gff_genes$attributes, "locus_tag"),
+    gene_name = extract_attr(gff_genes$attributes, "gene"),
+    product   = extract_attr(gff_genes$attributes, "product"),
+    stringsAsFactors = FALSE
+)
+
+# Equivalent de distinct() : suppression des doublons
+gff_annot <- gff_annot[!duplicated(gff_annot$locus_tag), ]
 
 cat("Annotations extraites :", nrow(gff_annot), "gènes.\n")
 
 # ----------------------------------------------
-# Merge DESeq2 + annotation
+# Merge DESeq2 + GFF
 # ----------------------------------------------
 
-annotated <- deg %>%
-    left_join(gff_annot, by = c("gene_id" = "locus_tag"))
+annotated <- merge(
+    deg, gff_annot,
+    by.x = "gene_id",
+    by.y = "locus_tag",
+    all.x = TRUE
+)
 
 cat("Résultats annotés :", nrow(annotated), "entrées.\n")
 
