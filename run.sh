@@ -16,7 +16,7 @@ docker build -t alantrbt/cutadapt:1.11     containers/cutadapt
 docker build -t alantrbt/sratoolkit:latest containers/sratoolkit
 docker build -t alantrbt/subread:latest    containers/subread
 docker build -t alantrbt/deseq2:latest     containers/deseq2
-docker build -t alantrbt/tidyverse:latest  containers/tydiverse
+docker build -t alantrbt/tidyverse:latest  containers/tidyverse
 
 echo ""
 echo "----------------------------------------"
