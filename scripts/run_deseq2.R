@@ -11,14 +11,16 @@ suppressPackageStartupMessages({
 
 args <- commandArgs(trailingOnly = TRUE)
 
-if (length(args) < 2) {
-    stop("Usage: run_deseq2.R <counts_files...> <output.csv>")
+if (length(args) < 3) {
+    stop("Usage: run_deseq2.R <samples.tsv> <counts_files...> <output.csv>")
 }
 
-# Last argument = output file
+# First argument = samples.tsv
+samples_file <- args[1]
 output_file <- args[length(args)]
-count_files <- args[-length(args)]
+count_files <- args[2:(length(args)-1)]
 
+cat("Samples file:", samples_file, "\n")
 cat("Count files:\n")
 print(count_files)
 cat("\nOutput:", output_file, "\n\n")
@@ -44,7 +46,7 @@ counts <- Reduce(function(x, y) merge(x, y, by="Geneid"), list_df)
 gene_ids <- counts$Geneid
 count_matrix <- counts[, -1]
 
-# Clean column names
+# Clean column names (should match SRA IDs)
 colnames(count_matrix) <- gsub(".*/|\\.bam$", "", colnames(count_matrix))
 
 # Convert to integer matrix
@@ -52,20 +54,15 @@ count_matrix <- as.matrix(count_matrix)
 mode(count_matrix) <- "integer"
 
 # ----------------------------------------------
-# 2) Create metadata (conditions)
+# 2) Read sample metadata and match conditions
 # ----------------------------------------------
 
-# For the hackathon: 6 samples
-# SRR10452052-54 → persister
-# SRR10452055-57 → control
-# (Adjust if needed)
-conditions <- ifelse(grepl("SRR1045205[2-4]", colnames(count_matrix)),
-                     "persister", "control")
+samples <- read.table(samples_file, header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+rownames(samples) <- samples$sra
 
-coldata <- data.frame(
-    row.names = colnames(count_matrix),
-    condition = factor(conditions)
-)
+# Ensure order matches count_matrix columns
+coldata <- samples[colnames(count_matrix), , drop = FALSE]
+coldata$condition <- factor(coldata$condition)
 
 cat("Sample table:\n")
 print(coldata)

@@ -198,7 +198,7 @@ process DESEQ2 {
 
     script:
     """
-    Rscript /scripts/run_deseq2.R ${counts_files.join(" ")} deseq2_results.csv
+    Rscript /scripts/run_deseq2.R $baseDir/samples.tsv ${counts_files.join(" ")} deseq2_results.csv
     echo "Rscript: `Rscript --version | head -1`" > versions.yml
     """
 
@@ -206,6 +206,86 @@ process DESEQ2 {
     """
     touch deseq2_results.csv
     echo "Rscript: stub" > versions.yml
+    """
+}
+
+/*
+ * 8) Annotation GFF → DESeq2 annoté
+ */
+process ANNOTATE_GENES {
+
+    tag "annotate"
+    publishDir "${params.outdir}/deseq2", mode: 'copy'
+    container "bioconductor/bioconductor_docker:RELEASE_3_17"
+
+    input:
+        path deseq
+        path gff
+
+    output:
+        path "deseq2_results_annotated.csv", emit: annotated
+        path "versions.yml", emit: versions
+
+    script:
+    """
+    Rscript /scripts/annotate_genes.R \
+        $deseq \
+        $gff \
+        deseq2_results_annotated.csv
+    echo "Rscript: `Rscript --version | head -1`" > versions.yml
+    """
+}
+
+/*
+ * 9) Analyse des pathways KEGG
+ */
+process PATHWAYS {
+
+    tag "pathways"
+    publishDir "${params.outdir}/pathways", mode: 'copy'
+    container "bioconductor/bioconductor_docker:RELEASE_3_17"
+
+    input:
+        path annotated
+
+    output:
+        path "kegg_pathways_up.csv"
+        path "kegg_pathways_down.csv"
+        path "kegg_up_barplot.png"
+        path "kegg_down_barplot.png"
+        path "versions.yml", emit: versions
+
+    script:
+    """
+    Rscript /scripts/run_pathways.R \
+        $annotated \
+        pathways_results
+
+    cp pathways_results/* .
+    echo "Rscript KEGG: `Rscript --version | head -1`" > versions.yml
+    """
+}
+
+/*
+ * 10) Visualisation des résultats DESeq2
+ */
+process PLOT_DESEQ2 {
+    publishDir "${params.outdir}/deseq2/plots", mode: 'copy'
+    container "alantrbt/deseq2:latest"
+
+    input:
+        path deseq_results
+
+    output:
+        path "deseq2_plot.png", emit: plot
+        path "versions.yml", emit: versions
+
+    script:
+    """
+    # Correction : si 'gene_name' n'existe pas, on remplace par 'gene_id' dans le script
+    sed 's/gene_name/gene_id/g' /scripts/plot_deseq2.R > plot_deseq2_tmp.R
+    Rscript plot_deseq2_tmp.R $deseq_results deseq2_plot.png
+    echo "Rscript: `Rscript --version | head -1`" > versions.yml
     """
 }
 
@@ -233,5 +313,12 @@ workflow {
     all_counts = counts_ch.collect()
 
     samples_ch.collect().set { samples_metadata }
-    DESEQ2(all_counts, samples_metadata)
+    deseq_results = DESEQ2(all_counts, samples_metadata).results
+    annotated_ch  = ANNOTATE_GENES(deseq_results, gff_ch).annotated
+    PATHWAYS(annotated_ch)
+    PLOT_DESEQ2(deseq_results)
 }
+
+
+
+
